@@ -196,4 +196,13 @@ Le script contrôle trois points :
  une tâche cron lance `backup.sh` tous les jours à 2h. Les traces sont écrites dans `backup/backup.log`.
 
 vous trouver le script complet dans le fichier `backup.sh` à la racine du projet. Il est commenté pour expliquer chaque étape.
+________________________________________
+## Question 8.16 — Reprise
+1- Pourquoi un volume persistant ne protège-t-il pas contre une suppression accidentelle du volume lui-même ?
+2- Quelle différence existe-t-il entre persistance, sauvegarde et restauration ?
 
+1- Un volume persistant ne protège pas contre une suppression accidentelle du volume lui-même parce que la persistance signifie simplement que les données sont conservées indépendamment du cycle de vie des conteneurs. Cependant, si le volume est supprimé (par exemple avec `docker volume rm` ou `docker compose down -v`), toutes les données qu'il contient seront perdues. La persistance ne fournit pas de mécanisme de sauvegarde ou de récupération en cas de suppression du volume.
+2- La différence entre persistance, sauvegarde et restauration est la suivante :
+- Persistance : les données sont conservées dans un volume Docker, ce qui permet de les maintenir même si les conteneurs sont supprimés ou recréés. Cependant, cela ne protège pas contre la suppression du volume lui-même.
+- Sauvegarde : il s'agit de créer une copie des données (par exemple un fichier SQL) qui peut être stockée en dehors du volume persistant. La sauvegarde permet de récupérer les données en cas de perte ou de corruption du volume.   
+- Restauration : il s'agit de recharger les données à partir d'une sauvegarde précédente. La restauration permet de récupérer les données dans leur état précédent en cas de perte ou de corruption.    
