@@ -121,3 +121,18 @@ ________________________________________
 - DNS interne : Docker traduit le nom db en adresse IP. Ça permet à web de trouver la base sans connaître son adresse.
 * Pourquoi pas d’IP fixe ? L’adresse IP change quand le conteneur est recréé. Si elle est écrite en dur, l’application ne fonctionne plus. Le nom db reste toujours le même.
 
+________________________________________
+## Question 8.11 — Démarrage
+1- Quelle différence existe-t-il entre :
+•	Un conteneur démarré.
+•	Un processus serveur actif.
+•	Un service réellement prêt à répondre aux demandes ?
+2- Pourquoi un conteneur peut-il apparaître comme running alors que l'application est inutilisable ?
+
+
+1-
+- Conteneur démarré : Docker a lancé le conteneur. Il affiche running, mais ça ne dit pas si l’application marche.
+- Processus serveur actif : le programme tourne, mais il peut encore être en train de s’initialiser. Par exemple, MariaDB prépare ses données avant d’accepter les connexions. 
+- Service prêt : le service répond vraiment aux demandes. C’est le seul niveau qui compte pour l’utilisateur.
+
+2- Pourquoi running mais inutilisable ? Docker vérifie seulement que le processus est vivant, pas qu’il fonctionne. L’application peut être en cours d’initialisation, ou renvoyer des erreurs.
