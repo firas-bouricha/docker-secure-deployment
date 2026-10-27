@@ -171,3 +171,13 @@ ________________________________________
 - Bind mount : dossier de ta machine monté dans le conteneur. Tu vois et modifies directement les fichiers.
 2- Nous avons choisi un volume nommé pour /var/lib/mysql afin de garantir la persistance des données de la base de données MariaDB. En utilisant un volume nommé, les données restent intactes même si le conteneur MariaDB est supprimé ou recréé, ce qui est essentiel pour maintenir l'intégrité et la continuité des informations stockées dans la base de données.
 3- Un bind mount serait préférable dans les cas où l'on souhaite un accès direct aux fichiers depuis l'hôte, par exemple pour le développement ou le débogage. Cela permet de modifier les fichiers de l'application ou de la configuration en temps réel sans avoir à reconstruire l'image ou redémarrer le conteneur. Cependant, il faut être prudent avec les bind mounts en production, car ils peuvent introduire des risques de sécurité et de stabilité si les fichiers de l'hôte sont modifiés de manière inattendue.
+
+## Question 8.15 — Conservation des données
+1- Pourquoi les enregistrements sont-ils conservés alors que les conteneurs ont été supprimés ?
+2- Que se passerait-il avec :
+docker compose down -v
+N'exécutez pas cette dernière commande sur votre environnement de travail.
+
+1- Les enregistrements sont conservés parce que les données de la base de données MariaDB sont stockées dans un volume Docker nommé (db_data). Les volumes Docker sont indépendants du cycle de vie des conteneurs, ce qui signifie que même si les conteneurs sont supprimés, les données dans le volume restent intactes. Ainsi, lorsque vous recréez les conteneurs, ils peuvent accéder aux mêmes données persistantes.
+2- La commande `docker compose down -v` supprime les conteneurs, les réseaux et les volumes associés à la composition. Si vous exécutez cette commande, le volume nommé (db_data) sera également supprimé, ce qui entraînera la perte de toutes les données stockées dans la base de données MariaDB. 
+
