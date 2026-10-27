@@ -136,3 +136,27 @@ ________________________________________
 - Service prêt : le service répond vraiment aux demandes. C’est le seul niveau qui compte pour l’utilisateur.
 
 2- Pourquoi running mais inutilisable ? Docker vérifie seulement que le processus est vivant, pas qu’il fonctionne. L’application peut être en cours d’initialisation, ou renvoyer des erreurs.
+
+## Question 8.12 — Disponibilité
+1- Quel avantage présente service_healthy par rapport à service_started ?
+2- Cette configuration garantit-elle que MariaDB restera disponible pendant toute la durée de vie de l'application ?
+3- Quelle autre responsabilité doit être assumée par le code applicatif en cas d'interruption temporaire de la base ?
+
+1- Avantage de service_healthy : il indique que le service est prêt à répondre aux demandes, pas seulement qu’il a démarré. Cela permet de s’assurer que l’application ne tente pas de se connecter à une base qui n’est pas encore prête.
+2- Non, cette configuration ne garantit pas que MariaDB restera disponible pendant toute la durée de vie de l'application. Elle ne fait que vérifier l'état au démarrage. Des interruptions peuvent survenir pour diverses raisons (redémarrage du conteneur, panne du serveur, etc.).
+3- Responsabilité du code applicatif : le code doit gérer les interruptions temporaires de la base de données, par exemple en implémentant des mécanismes de reconnexion, des files d'attente de requêtes, ou des stratégies de tolérance aux pannes pour assurer la continuité du service
+________________________________________
+
+## Question 8.13 — Diagnostic d'incident
+1- Pourquoi le serveur web peut-il rester actif alors que l'application ne fonctionne plus ?
+2- Quels éléments permettent de distinguer une panne réseau, une indisponibilité de MariaDB et une erreur dans le code PHP ?
+3- Quelle amélioration proposeriez-vous pour assurer une meilleure tolérance aux interruptions temporaires ?
+
+1- Le serveur web peut rester actif même si l'application ne fonctionne plus parce que le processus Apache peut être en cours d'exécution, mais l'application PHP qu'il sert peut rencontrer des erreurs ou des problèmes de connexion à la base de données. Ainsi, le serveur web peut répondre aux requêtes HTTP, mais l'application elle-même peut échouer à traiter ces requêtes correctement.
+2- Pour distinguer une panne réseau, une indisponibilité de MariaDB et une erreur dans le code PHP, on peut examiner les journaux du serveur web et de la base de données. Une panne réseau peut se manifester par des erreurs de connexion ou des délais d'attente. Une indisponibilité de MariaDB peut être identifiée par des messages d'erreur spécifiques liés à la base de données, tandis qu'une erreur dans le code PHP peut générer des messages d'erreur ou des exceptions dans les journaux du serveur web.
+3- Pour assurer une meilleure tolérance aux interruptions temporaires, on pourrait mettre en place des mécanismes de reprise automatique dans l'application, tels que des tentatives de reconnexion avec des délais d'attente progressifs, l'utilisation de files d'attente pour gérer les requêtes en attente, et la mise en place de tests de santé pour surveiller l'état de la base de données et du serveur web. De plus, l'utilisation de solutions de mise en cache ou de réplication de la base de données pourrait également améliorer la résilience de l'application face aux interruptions temporaires.
+
+ 
+
+
+
