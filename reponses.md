@@ -105,3 +105,5 @@ ________________________________________
 1- Séparer les réseaux frontend et backend permet de cloisonner les communications entre les services. Le réseau frontend est destiné aux services qui doivent être accessibles depuis l’extérieur (comme le service web), tandis que le réseau backend est réservé aux services internes (comme la base de données). Cela renforce la sécurité  et réduisant la surface d’attaque.
 2- La publication du port 3306 avec ports: "3306:3306" exposerait le service MariaDB à l’extérieur du réseau Docker. Cela augmenterait le risque de compromission de la sécurité 
 3- L'absence de port publié signifie que le service n'est pas accessible depuis l'extérieur du réseau Docker, mais il reste accessible depuis les autres conteneurs du même réseau.
+
+## Question 8.10 — Analyse réseau
