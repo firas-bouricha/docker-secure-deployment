@@ -1,0 +1,57 @@
+services:
+  db:
+    image: mariadb:11.4
+
+    environment:
+      MARIADB_DATABASE: td2
+      MARIADB_USER: td2app
+      MARIADB_PASSWORD_FILE: /run/secrets/db_app_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+
+    secrets:
+      - db_app_password
+      - db_root_password
+
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - backend
+
+  web:
+    build:
+      context: ./app
+
+    image: ynov/td2-web:1.0
+
+    ports:
+      - "127.0.0.1:8080:80"
+
+    environment:
+      DB_HOST: db
+      DB_NAME: td2
+      DB_USER: td2app
+
+    secrets:
+      - db_app_password
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - db
+
+volumes:
+  db_data:
+
+networks:
+  frontend:
+
+  backend:
+    internal: true
+
+secrets:
+  db_root_password:
+    file: ./secrets/db_root_password
+
+  db_app_password:
+    file: ./secrets/db_app_password
