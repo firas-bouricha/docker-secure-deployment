@@ -157,6 +157,17 @@ ________________________________________
 3- Pour assurer une meilleure tolérance aux interruptions temporaires, on pourrait mettre en place des mécanismes de reprise automatique dans l'application, tels que des tentatives de reconnexion avec des délais d'attente progressifs, l'utilisation de files d'attente pour gérer les requêtes en attente, et la mise en place de tests de santé pour surveiller l'état de la base de données et du serveur web. De plus, l'utilisation de solutions de mise en cache ou de réplication de la base de données pourrait également améliorer la résilience de l'application face aux interruptions temporaires.
 
  
+## Question 8.14 — Types de stockage
+1-Quelle différence existe-t-il entre :
+•	La couche inscriptible d'un conteneur.
+•	Un volume Docker nommé.
+•	Un bind mount.
+2- Pourquoi avons-nous choisi un volume nommé pour /var/lib/mysql ?
+3- Dans quel cas un bind mount serait-il préférable?
 
-
-
+1- 
+- Couche inscriptible : espace temporaire créé dans le conteneur. Les données disparaissent quand le conteneur est supprimé.
+- Volume nommé : espace géré par Docker, en dehors du conteneur. Les données restent même si le conteneur est supprimé.
+- Bind mount : dossier de ta machine monté dans le conteneur. Tu vois et modifies directement les fichiers.
+2- Nous avons choisi un volume nommé pour /var/lib/mysql afin de garantir la persistance des données de la base de données MariaDB. En utilisant un volume nommé, les données restent intactes même si le conteneur MariaDB est supprimé ou recréé, ce qui est essentiel pour maintenir l'intégrité et la continuité des informations stockées dans la base de données.
+3- Un bind mount serait préférable dans les cas où l'on souhaite un accès direct aux fichiers depuis l'hôte, par exemple pour le développement ou le débogage. Cela permet de modifier les fichiers de l'application ou de la configuration en temps réel sans avoir à reconstruire l'image ou redémarrer le conteneur. Cependant, il faut être prudent avec les bind mounts en production, car ils peuvent introduire des risques de sécurité et de stabilité si les fichiers de l'hôte sont modifiés de manière inattendue.
