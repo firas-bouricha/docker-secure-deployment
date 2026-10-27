@@ -17,6 +17,16 @@ services:
       - ./db/init:/docker-entrypoint-initdb.d:ro
     networks:
       - backend
+    healthcheck:
+      test:
+        - CMD
+        - healthcheck.sh
+        - --connect
+        - --innodb_initialized
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 20s
 
   web:
     build:
@@ -38,7 +48,8 @@ services:
       - frontend
       - backend
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   db_data:
