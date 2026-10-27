@@ -1,4 +1,4 @@
-# docker-secure-deployment# Docker Secure Deployment
+# Docker Secure Deployment
 
 Déploiement sécurisé d'une application web PHP et de sa base de données MariaDB avec Docker Compose, en isolant la base de données sur un réseau interne et en gérant les mots de passe par fichiers secrets.
 

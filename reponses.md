@@ -87,7 +87,7 @@ ________________________________________
 1-Le message qui révélait la panne : l’application répondait 503 {"status":"unavailable"}, et les journaux du service web (docker compose logs web) contenaient could not find driver. PHP ne trouvait pas le pilote MySQL. php -m l’a confirmé : seul pdo_sqlite était présent, pas pdo_mysql.
 2- Pourquoi modifier l’image et non redémarrer ? Le pilote manquait dans l’image elle-même. Redémarrer le conteneur relance la même image, donc la même panne. Et l’installer à la main dans le conteneur serait perdu à sa suppression, en plus de ne pas être reproductible. Il fallait donc l’ajouter dans le Dockerfile et reconstruire l’image.
 3- docker compose restart redémarre les conteneurs existants sans reconstruire l’image. Les modifications dans le Dockerfile ne sont pas prises en compte. docker compose up --build -d reconstruit l’image si nécessaire et recrée les conteneurs avec la nouvelle image, prenant en compte les changements du Dockerfile.
-
+________________________________________
 ## Question 8.8 — Résolution des services
 1- Pourquoi le nom db permet-il à PHP de joindre MariaDB ?
 2- Est-il nécessaire de connaître son adresse IP ?
@@ -97,6 +97,7 @@ ________________________________________
 2- Il n’est pas nécessaire de connaître l’adresse IP du conteneur MariaDB. Les conteneurs peuvent communiquer entre eux en utilisant les noms de service définis dans le fichier compose.yaml, ce qui rend la configuration plus flexible et moins sujette aux changements d’adresses IP.
 3- Si le conteneur MariaDB est recréé avec une nouvelle adresse IP, le conteneur web pourra toujours se connecter à MariaDB en utilisant le nom de service db.
 
+________________________________________
 ## Question 8.9 — Cloisonnement
 1- Pourquoi séparer les réseaux frontend et backend ?
 2- Quelle serait la conséquence d'une publication du port 3306 avec ports: "3306:3306" ?
@@ -105,5 +106,18 @@ ________________________________________
 1- Séparer les réseaux frontend et backend permet de cloisonner les communications entre les services. Le réseau frontend est destiné aux services qui doivent être accessibles depuis l’extérieur (comme le service web), tandis que le réseau backend est réservé aux services internes (comme la base de données). Cela renforce la sécurité  et réduisant la surface d’attaque.
 2- La publication du port 3306 avec ports: "3306:3306" exposerait le service MariaDB à l’extérieur du réseau Docker. Cela augmenterait le risque de compromission de la sécurité 
 3- L'absence de port publié signifie que le service n'est pas accessible depuis l'extérieur du réseau Docker, mais il reste accessible depuis les autres conteneurs du même réseau.
-
+________________________________________
 ## Question 8.10 — Analyse réseau
+1- Distinguez :
+•	Le réseau interne des conteneurs.
+•	Le port d'écoute du processus Apache.
+•	Le port publié sur l'hôte.
+•	Le mécanisme de résolution DNS interne.
+2- Expliquez pourquoi l'adresse IP d'un conteneur ne doit pas constituer une dépendance permanente de la configuration applicative.
+1-
+- Réseau interne : chaque conteneur a une adresse IP privée sur le réseau Docker. Seuls les conteneurs du même réseau se voient.
+- Port d’Apache : Apache écoute sur le port 80 à l’intérieur du conteneur. L’hôte ne le voit pas directement.
+- Port publié : 127.0.0.1:8080:80 redirige ton port 8080 vers le port 80 du conteneur. C’est la porte d’entrée depuis ta machine.
+- DNS interne : Docker traduit le nom db en adresse IP. Ça permet à web de trouver la base sans connaître son adresse.
+* Pourquoi pas d’IP fixe ? L’adresse IP change quand le conteneur est recréé. Si elle est écrite en dur, l’application ne fonctionne plus. Le nom db reste toujours le même.
+
