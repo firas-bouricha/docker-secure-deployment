@@ -181,3 +181,19 @@ N'exécutez pas cette dernière commande sur votre environnement de travail.
 1- Les enregistrements sont conservés parce que les données de la base de données MariaDB sont stockées dans un volume Docker nommé (db_data). Les volumes Docker sont indépendants du cycle de vie des conteneurs, ce qui signifie que même si les conteneurs sont supprimés, les données dans le volume restent intactes. Ainsi, lorsque vous recréez les conteneurs, ils peuvent accéder aux mêmes données persistantes.
 2- La commande `docker compose down -v` supprime les conteneurs, les réseaux et les volumes associés à la composition. Si vous exécutez cette commande, le volume nommé (db_data) sera également supprimé, ce qui entraînera la perte de toutes les données stockées dans la base de données MariaDB. 
 
+## 15.3 : Sauvegarder la base
+**Principe** : un volume persistant conserve les données, mais ne les sauvegarde pas. La sauvegarde est un fichier SQL créé avec `mariadb-dump`.
+**1. Export**
+Le mot de passe est stocké sur la machine hôte, dans `secrets/db_app_password`. Ce fichier n'est pas versionné (`.gitignore`). Docker Compose le monte dans le conteneur `db`, et la commande `mariadb-dump` le lit depuis là. Le mot de passe n'apparaît donc ni dans la ligne de commande, ni dans le fichier de sauvegarde.
+**Remarque** : en local, les mots de passe sont dans des fichiers ignorés par Git. En production, on utiliserait un gestionnaire de secrets (par exemple HashiCorp Vault, AWS Secrets Manager ou les secrets Docker Swarm), car un fichier `.env` exposerait les valeurs dans `docker inspect` et dans l'environnement des processus.
+Commande : `./backup.sh`
+**2. Vérification**
+Le script contrôle trois points :
+- le fichier n'est pas vide ;
+- la dernière ligne est `-- Dump completed` ;
+- le mot de passe n'apparaît pas dans le fichier.
+**Automatisation** 
+ une tâche cron lance `backup.sh` tous les jours à 2h. Les traces sont écrites dans `backup/backup.log`.
+
+vous trouver le script complet dans le fichier `backup.sh` à la racine du projet. Il est commenté pour expliquer chaque étape.
+
