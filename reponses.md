@@ -247,3 +247,35 @@ Pas un coffre-fort : avec Compose, le secret n’est qu’un fichier en clair su
 3-
 En production : Docker Swarm secrets ou Kubernetes Secrets (chiffrés au repos), ou mieux un coffre centralisé : HashiCorp Vault, AWS Secrets Manager, Azure Key Vault. Ils offrent chiffrement, droits d’accès, rotation et audit.
 
+## Question 8.21 — Cache Docker
+1- Pourquoi l'installation de l'extension PHP peut-elle être récupérée depuis le cache alors que la copie du code doit être réexécutée ?
+2- Dans quel cas serait-il pertinent d'utiliser --no-cache ?
+3- Pourquoi l'ordre des instructions influence-t-il les performances de construction ?
+
+reponses :
+1- Pourquoi l'installation de l'extension PHP peut-elle être récupérée depuis le cache alors que la copie du code doit être réexécutée ?
+2- Dans quel cas serait-il pertinent d'utiliser --no-cache ?
+3- Pourquoi l'ordre des instructions influence-t-il les performances de construction ?
+
+reponses :
+Pourquoi RUN vient du cache et pas COPY : Docker réutilise une étape si l’instruction et tout ce qui la précède n’ont pas changé. RUN docker-php-ext-install n’a pas changé, il est donc repris du cache. Pour COPY, Docker compare le contenu des fichiers copiés : index.php a changé, donc l’étape est refaite, ainsi que toutes celles qui suivent.
+
+--no-cache : il force à tout refaire. C’est utile pour récupérer les mises à jour de sécurité (un RUN apt-get en cache garderait d’anciens paquets), pour corriger un cache corrompu, ou pour vérifier que le build fonctionne vraiment de zéro.
+
+L’ordre compte : dès qu’une étape change, toutes les suivantes sont reconstruites. On met donc en haut ce qui change rarement (image de base, extensions) et en bas ce qui change souvent (le code). Ainsi, une modification du code ne relance pas l’installation des extensions, qui est lente.
+
+## Question 8.22 — Versionnement
+1- Cette commande a-t-elle produit un nouveau contenu d'image ?
+2- Comment distinguer la création d'un tag et la construction réelle d'une nouvelle version applicative ?
+3- Quelle politique de versionnement proposeriez-vous pour les images distribuées en production ?
+
+Nouveau contenu ? Non. docker image tag ajoute seulement un nouveau nom vers la même image : même ID, mêmes couches, aucune copie.
+
+Tag ou nouvelle version : un nouveau tag garde le même ID. Une vraie nouvelle version (docker build après une modification du code) produit un ID différent. On le vérifie avec docker image inspect --format '{{.Id}}'.
+
+Politique en production :
+
+versionnement sémantique MAJEUR.MINEUR.CORRECTIF (1.2.3), un numéro par build, jamais réutilisé ;
+ne jamais déployer latest en production ;
+lier chaque image au commit Git (tag 1.2.3-abc1234 ou label) ;
+déployer par digest pour garantir l’image exacte.
