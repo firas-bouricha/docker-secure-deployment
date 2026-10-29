@@ -1,141 +1,106 @@
-# Docker Secure Deployment
+# 🐳 TD2 Docker — Application PHP / MariaDB conteneurisée et supervisée
 
-Déploiement sécurisé d'une application web PHP et de sa base de données MariaDB avec Docker Compose, en isolant la base de données sur un réseau interne et en gérant les mots de passe par fichiers secrets.
+Application de suivi d'événements (**Apache/PHP + MariaDB**) déployée avec **Docker Compose** :
+réseaux cloisonnés, secrets externes, healthcheck, persistance et supervision **Telegraf / InfluxDB / Grafana**.
 
-## Objectifs
+> Ynov — Mastère 2 Expert Cloud, Sécurité & Infrastructure · Firas Bouricha
 
-- Déployer une stack à deux services (application web + base de données) avec Docker Compose.
-- Ne jamais écrire de mot de passe dans les fichiers de configuration : utiliser les **secrets Docker**.
-- Isoler la base de données : elle n'est accessible que par l'application, et jamais depuis l'hôte ni depuis Internet.
-- Appliquer le **principe du moindre privilège** : chaque service ne reçoit que les secrets dont il a besoin.
+---
 
-## Architecture
+## 🗺️ Architecture
 
 ```
-          Navigateur (hôte)
-                 │
-        127.0.0.1:8080 (uniquement local)
-                 │
-          ┌──────▼──────┐
-          │     web     │
-          └──┬───────┬──┘
-   réseau    │       │   réseau
-  frontend   │       │  backend (internal)
-             │       │
-          ┌──▼───────▼──┐
-          │     db      │   MariaDB 11.4
-          └─────────────┘   aucun port publié
+ Navigateur ──► 127.0.0.1:8080 ──► web (PHP/Apache)      127.0.0.1:3000 ──► grafana
+                                     │  frontend                                │
+                                     │  backend (interne)          monitoring (interne)
+                                     ▼                                          │
+                               db (MariaDB 11.4)       telegraf ──► influxdb ◄──┘
+                               aucun port publié          │
+                               volume db_data       socket-proxy (lecture seule) ──► docker.sock
 ```
 
-| Service | Image | Réseaux | Port publié | Secrets |
-|---|---|---|---|---|
-| `web` | construite depuis `app/` | `frontend`, `backend` | `127.0.0.1:8080` → 80 | `db_app_password` |
-| `db` | `mariadb:11.4` | `backend` | aucun | `db_root_password`, `db_app_password` |
+| Service | Image | Port publié | Rôle |
+|---|---|---|---|
+| `web` | `ynov/td2-web:1.0` (Dockerfile) | `127.0.0.1:8080` | API JSON : `GET` lit, `POST` ajoute un événement |
+| `db` | `mariadb:11.4` | ❌ aucun | Base `td2`, healthcheck, volume `db_data` |
+| `telegraf` | `telegraf:1.40.2` | ❌ | Métriques, sonde HTTP, journaux |
+| `influxdb` | `influxdb:2.7` | ❌ | Stockage des métriques (7 jours) |
+| `grafana` | `grafana/grafana:11.3.0` | `127.0.0.1:3000` | Dashboard « TD2 Supervision » |
+| `socket-proxy` | `tecnativa/docker-socket-proxy:v0.5.0` | ❌ | Accès **lecture seule** à l'API Docker |
 
-### Pourquoi deux réseaux ?
+**🔒 Sécurité appliquée**
+- `db` est uniquement sur le réseau `backend` (interne) : inaccessible depuis l'hôte.
+- Les mots de passe sont des **secrets fichiers** (`/run/secrets/`) : ils ne sont ni dans l'image, ni dans `compose.yaml`, ni dans `docker inspect`.
+- `web` tourne avec `cap_drop: ALL`, plus seulement `NET_BIND_SERVICE`, `SETUID` et `SETGID`, et avec `no-new-privileges`.
+- Telegraf n'a jamais le socket Docker : il passe par `socket-proxy` (`POST=0`).
 
-- **`frontend`** : réseau classique, relié à l'hôte pour publier l'application.
-- **`backend`** : marqué `internal: true`. Les conteneurs qui n'y sont connectés que ne peuvent ni sortir vers Internet, ni être joints depuis l'hôte. La base reste donc inaccessible de l'extérieur.
+---
 
-Le service `web` relie les deux réseaux : il reçoit les requêtes des utilisateurs et communique avec la base.
+## 🚀 Démarrage rapide
 
-### Pourquoi des secrets plutôt que des variables d'environnement ?
+**Prérequis :** Docker et Docker Compose v2 (Linux, macOS ou Windows avec WSL 2).
 
-Une variable d'environnement (`MARIADB_PASSWORD=...`) est visible avec `docker inspect` et apparaît souvent dans les logs. Un secret est monté sous forme de fichier dans `/run/secrets/` : le mot de passe n'apparaît ni dans le fichier `compose.yaml`, ni dans l'historique des commandes.
-
-## Structure du projet
-
-```
-.
-├── compose.yaml          # Définition des services, réseaux, volumes et secrets
-├── app/
-│   ├── Dockerfile        # Construction de l'image de l'application web
-│   ├── .dockerignore     # Fichiers exclus du contexte de build
-│   └── public/
-│       └── index.php     # Point d'entrée de l'application
-├── db/
-│   └── init/
-│       └── 01-init.sql   # Script exécuté au premier démarrage de la base
-├── secrets/
-│   ├── db_root_password.example
-│   └── db_app_password.example
-└── .gitignore
-```
-
-## Prérequis
-
-- Docker et Docker Compose (v2)
-- Linux, macOS, ou Windows avec WSL 2
-
-## Installation
-
-**1. Cloner le dépôt**
+### 1. Créer les secrets ⚠️ obligatoire
+Le dossier `secrets/` **n'est pas fourni** (exclu du rendu et de Git). Crée-le en une commande :
 
 ```bash
-git clone https://github.com/firas-bouricha/docker-secure-deployment.git
-cd docker-secure-deployment
+mkdir -p secrets && for s in db_root_password db_app_password influx_admin_password grafana_admin_password; do
+  openssl rand -hex 18 > secrets/$s; done && openssl rand -hex 32 > secrets/influx_token
 ```
 
-**2. Créer les fichiers de secrets**
+> Garde les droits par défaut (`644`). En `600`, les utilisateurs des conteneurs (`www-data`, `mysql`) ne pourraient pas lire leur secret.
 
-Les vrais mots de passe ne sont jamais versionnés. Copie les modèles puis remplace leur contenu :
-
-```bash
-cp secrets/db_root_password.example secrets/db_root_password
-cp secrets/db_app_password.example secrets/db_app_password
-```
-
-Choisis des mots de passe robustes, par exemple avec `openssl rand -base64 24`.
-
-**3. Lancer la stack**
-
+### 2. Lancer l'application
 ```bash
 docker compose up -d --build
+docker compose ps          # attendre que db soit "healthy"
 ```
 
-**4. Accéder à l'application**
-
-Ouvre [http://127.0.0.1:8080](http://127.0.0.1:8080) dans ton navigateur.
-
-## Vérifications
-
-**Les services tournent :**
-
+### 3. Lancer la supervision (optionnel)
 ```bash
-docker compose ps
+docker compose --profile monitoring up -d
 ```
+Ouvre http://127.0.0.1:3000 avec l'utilisateur `admin` et le mot de passe donné par `cat secrets/grafana_admin_password`.
+La source InfluxDB et le dashboard sont chargés automatiquement (provisioning).
 
-**Le réseau backend est bien interne :**
+---
 
-```bash
-docker network inspect docker-secure-deployment_backend \
-  --format '{{range .Containers}}{{.Name}} {{end}}'
-```
+## ✅ Vérifier que tout fonctionne
 
-Le résultat doit lister `db` et `web`, et seulement eux.
-
-**La base n'est pas joignable depuis l'hôte :**
-
-```bash
-nc -zv 127.0.0.1 3306   # doit échouer : aucun port publié
-```
-
-## Arrêt et nettoyage
-
-```bash
-docker compose down        # arrête et supprime les conteneurs et réseaux
-docker compose down -v     # supprime aussi le volume de données (perte des données)
-```
-
-## Sécurité : ce qui est versionné et ce qui ne l'est pas
-
-| Élément | Versionné | Raison |
+| Test | Commande | Attendu |
 |---|---|---|
-| `secrets/*.example` | Oui | Modèles sans valeur réelle |
-| `secrets/*` (mots de passe réels) | Non | Exclus par `.gitignore` |
-| `.env` | Non | Peut contenir des valeurs sensibles |
+| Lecture | `curl -s http://127.0.0.1:8080/` | JSON avec 3 événements |
+| Écriture | `curl -i -X POST http://127.0.0.1:8080/ -H "Content-Type: application/json" -d '{"message":"test"}'` | `201 Created` |
+| Base isolée | `docker compose port db 3306` | Aucun port publié |
+| Persistance | `docker compose down && docker compose up -d` puis `curl` | L'événement `test` est toujours là |
+| Panne | `docker compose stop db` puis `curl -i …` | `503`, et « Panne » dans Grafana |
+| Reprise | `docker compose start db` | De nouveau `200` |
 
-Si un mot de passe réel a été versionné par erreur, il doit être **considéré comme compromis** : il faut le changer. Le supprimer dans un commit ultérieur ne suffit pas, il reste dans l'historique Git.
+---
+
+## 💾 Sauvegarde de la base
+```bash
+docker compose exec db sh -c 'mariadb-dump -uroot -p"$(cat /run/secrets/db_root_password)" td2' > backup_td2.sql
+```
+
+---
+
+## 🧹 Arrêt
+```bash
+docker compose --profile monitoring down   # garde les données
+docker compose down -v                     # ⚠️ supprime aussi les volumes (base comprise)
+```
+
+---
+
+## 📁 Contenu du projet
+```
+app/            Dockerfile, .dockerignore, public/index.php
+db/init/        01-init.sql (exécuté au premier démarrage uniquement)
+monitoring/     telegraf.conf, provisioning et dashboard Grafana
+compose.yaml    Services, réseaux, volumes, secrets
+reponses.md     Justifications techniques (Q8.1 à Q8.28)
+```
 
 ## Compétences mises en œuvre
 
