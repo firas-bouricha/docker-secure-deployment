@@ -206,3 +206,44 @@ ________________________________________
 - Persistance : les données sont conservées dans un volume Docker, ce qui permet de les maintenir même si les conteneurs sont supprimés ou recréés. Cependant, cela ne protège pas contre la suppression du volume lui-même.
 - Sauvegarde : il s'agit de créer une copie des données (par exemple un fichier SQL) qui peut être stockée en dehors du volume persistant. La sauvegarde permet de récupérer les données en cas de perte ou de corruption du volume.   
 - Restauration : il s'agit de recharger les données à partir d'une sauvegarde précédente. La restauration permet de récupérer les données dans leur état précédent en cas de perte ou de corruption.    
+________________________________________
+## Question 8.17 — Identité et privilèges
+1- Quelle différence existe-t-il entre l'utilisateur déclaré pour le conteneur et les utilisateurs des processus Apache ?
+2- Pourquoi un processus exécuté avec les privilèges root présente-t-il un risque ?
+3- Un utilisateur root à l'intérieur du conteneur est-il nécessairement root sur l'hôte ?
+
+1- La différence entre l'utilisateur déclaré pour le conteneur et les utilisateurs des processus Apache réside dans le fait que l'utilisateur déclaré pour le conteneur est celui qui exécute le conteneur lui-même, tandis que les utilisateurs des processus Apache sont ceux qui exécutent les processus du serveur web à l'intérieur du conteneur. L'utilisateur du conteneur peut être configuré pour avoir des privilèges limités, tandis que les processus Apache peuvent s'exécuter sous un utilisateur spécifique (comme www-data) avec des permissions restreintes pour des raisons de sécurité.
+2- Un processus exécuté avec les privilèges root présente un risque car il a un accès complet au système de fichiers et aux ressources du conteneur. Si un attaquant parvient à exploiter une vulnérabilité dans le processus root, il pourrait potentiellement compromettre l'ensemble du conteneur et accéder à des informations sensibles ou exécuter des actions malveillantes. Il est donc recommandé de limiter les privilèges des processus pour réduire la surface d'attaque
+3- Un utilisateur root à l'intérieur du conteneur n'est pas nécessairement root sur l'hôte. Les conteneurs utilisent un mécanisme de virtualisation léger qui isole les processus et les utilisateurs du conteneur de ceux de l'hôte. Ainsi, même si un processus s'exécute en tant que root à l'intérieur du conteneur, il n'a pas les mêmes privilèges que l'utilisateur root sur l'hôte. Cependant, il est important de noter que certaines configurations ou vulnérabilités peuvent permettre à un processus root dans le conteneur d'obtenir des privilèges élevés sur l'hôte, ce qui constitue un risque de sécurité.
+________________________________________
+## Question 8.18 — principe de moindre privilège
+1- Pourquoi cap_drop: ALL ne constitue-t-il pas toujours une solution directement applicable ?
+2- En quoi le choix de l'image de base influence-t-il la capacité à exécuter le service sans privilèges ?
+
+1-cap_drop: ALL n’est pas toujours applicable directement : certains services ont besoin de quelques droits pour démarrer. Apache démarre en root, ouvre le port 80 puis change d’utilisateur : sans SETUID/SETGID, il plante (erreur observée : ...). Il faut donc tout retirer, tester, puis rajouter uniquement ce qui est nécessaire.
+
+2-Influence de l’image de base : une image prévue pour tourner sans root (utilisateur non privilégié, port > 1024 comme 8080) n’a besoin d’aucune capability. php:8.4-apache démarre en root sur le port 80, ce qui oblige à garder 3 capabilities. Le choix de l’image détermine donc le niveau de privilèges minimal possible.
+
+
+## Question 8.19 — Intégrité et versionnement
+1- Pourquoi un tag ne garantit-il pas à lui seul l'identité immuable d'une image ?
+2- Comment utiliser un digest pour identifier une version précise ?
+3- En quoi les architectures AMD64 et ARM64 compliquent-elles la comparaison des images ?
+
+1- Un tag ne garantit pas l'identité immuable d'une image car il peut être réutilisé pour pointer vers une nouvelle version de l'image. Par exemple, le tag "latest" peut être mis à jour pour référencer une nouvelle image, ce qui signifie que deux images avec le même tag peuvent avoir des contenus différents à différents moments. Ainsi, se fier uniquement aux tags peut entraîner des incohérences et des problèmes de compatibilité.
+2- Pour utiliser un digest pour identifier une version précise, on peut se référer à le digest SHA256 de l'image. Le digest est un identifiant unique basé sur le contenu de l'image, et il ne change pas tant que le contenu de l'image reste le même. En utilisant le digest, on peut s'assurer que l'on utilise exactement la même image, indépendamment des tags qui peuvent être réutilisés ou modifiés. Par exemple, on peut spécifier l'image avec son digest dans le Dockerfile ou dans le fichier docker-compose.yml pour garantir l'utilisation d'une version spécifique et immuable de l'image.
+3- Les architectures AMD64 et ARM64 compliquent la comparaison des images car elles peuvent avoir des différences dans leur contenu binaire en raison des différences d architecture. Une image construite pour une architecture spécifique peut ne pas être compatible avec une autre architecture, ce qui signifie que deux images avec le même tag ou même digest peuvent ne pas être identiques si elles sont destinées à des architectures différentes. Cela peut entraîner des problèmes de compatibilité et de déploiement si l'on ne tient pas compte de l'architecture lors de la comparaison ou de l'utilisation des images. Pour résoudre ce problème, il est important de vérifier l'architecture de l'image et de s'assurer que l'on utilise la bonne version pour l'environnement cible.
+________________________________________
+## Question 8.20 — Protection des informations sensibles
+1- Quel intérêt présente le montage d'un secret sous forme de fichier ?
+2- Pourquoi une solution Compose locale ne doit-elle pas être assimilée automatiquement à un coffre-fort centralisé de gestion des secrets ?
+3- Quelles solutions envisageriez-vous pour un déploiement en production ?
+
+réponses :
+1-
+Intérêt du secret en fichier : le mot de passe n’est ni dans l’image, ni dans compose.yaml, ni dans les variables d’environnement (donc invisible dans docker inspect et env). Il n’est monté que dans les conteneurs qui en ont besoin (web ne voit pas le mot de passe root), et l’application le lit au moment voulu.
+2-
+Pas un coffre-fort : avec Compose, le secret n’est qu’un fichier en clair sur l’hôte, monté dans le conteneur. Il n’y a ni chiffrement, ni contrôle d’accès centralisé, ni rotation automatique, ni journal des accès. Quiconque a accès à l’hôte ou au groupe docker peut le lire.
+3-
+En production : Docker Swarm secrets ou Kubernetes Secrets (chiffrés au repos), ou mieux un coffre centralisé : HashiCorp Vault, AWS Secrets Manager, Azure Key Vault. Ils offrent chiffrement, droits d’accès, rotation et audit.
+
