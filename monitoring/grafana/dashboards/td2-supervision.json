@@ -24,7 +24,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "cg2ol0caobocge"
+        "uid": "influxdb-td2"
       },
       "fieldConfig": {
         "defaults": {},
@@ -61,7 +61,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "cg2ol0caobocge"
+        "uid": "influxdb-td2"
       },
       "fieldConfig": {
         "defaults": {
@@ -194,7 +194,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "cg2ol0caobocge"
+        "uid": "influxdb-td2"
       },
       "fieldConfig": {
         "defaults": {
@@ -288,7 +288,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "cg2ol0caobocge"
+        "uid": "influxdb-td2"
       },
       "fieldConfig": {
         "defaults": {
@@ -379,7 +379,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "cg2ol0caobocge"
+        "uid": "influxdb-td2"
       },
       "fieldConfig": {
         "defaults": {
@@ -462,7 +462,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "cg2ol0caobocge"
+        "uid": "influxdb-td2"
       },
       "fieldConfig": {
         "defaults": {
@@ -553,7 +553,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "cg2ol0caobocge"
+        "uid": "influxdb-td2"
       },
       "fieldConfig": {
         "defaults": {
@@ -645,7 +645,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "cg2ol0caobocge"
+        "uid": "influxdb-td2"
       },
       "fieldConfig": {
         "defaults": {

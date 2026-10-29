@@ -49,7 +49,6 @@ try {
         echo json_encode([
             'status' => 'created'
         ]);
-        echo "// v1.1" ;
         exit;
     }
 
