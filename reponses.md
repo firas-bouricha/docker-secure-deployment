@@ -289,3 +289,24 @@ Archive (save/load) : l’image complète tient dans un fichier .tar, copié à 
 Copier un conteneur (docker commit ou export) : on capture un conteneur avec ses modifications manuelles. Ce n’est pas reproductible (aucun Dockerfile), on peut y embarquer des données ou des secrets, et export perd l’historique et la configuration.
 2-Avantages d’un registre avec plusieurs hôtes : une source unique pour tous les serveurs, le téléchargement à la demande (pull), le versionnement par tags et digests, le transfert des seules couches manquantes, la gestion des droits d’accès, le scan de vulnérabilités et l’intégration CI/CD et orchestrateur (Kubernetes).
 
+## Question 8.24 — Exploitation
+1- Quelles informations permettent de savoir qu'un conteneur fonctionne ?
+2- Ces informations suffisent-elles à garantir que le service métier est disponible ?
+3- Pourquoi faut-il distinguer métriques système, métriques applicatives et journaux ?
+
+reponse:
+1-Ce qui montre qu’un conteneur fonctionne : l’état running et healthy (docker compose ps), la consommation CPU et mémoire et le nombre de processus (docker stats), et des journaux sans erreur
+2-Non, ces informations ne suffisent pas à garantir que le service métier est disponible. Un conteneur peut être en état running et healthy, mais l’application qu’il héberge peut rencontrer des erreurs ou des problèmes de connexion à d’autres services, ce qui rend le service métier indisponible pour les utilisateurs finaux.
+3-Il faut distinguer métriques système, métriques applicatives et journaux car ils fournissent des informations différentes sur le fonctionnement du conteneur et de l’application. Les métriques système (CPU, mémoire, I/O) permettent de surveiller les ressources utilisées par le conteneur et de détecter des problèmes de performance. Les métriques applicatives (temps de réponse, nombre de requêtes, erreurs) permettent de mesurer la performance et la disponibilité du service métier. Les journaux fournissent des informations détaillées sur les événements et les erreurs survenus dans le conteneur et l’application, ce qui est essentiel pour le diagnostic et la résolution des problèmes. En combinant ces trois types d’informations, on obtient une vue complète de l’état du conteneur et de l’application, ce qui permet de prendre des décisions éclairées pour assurer la disponibilité et la performance du service métier.
+
+## 18.2. Extension : infrastructure de supervision
+Architecture : 3 services supplémentaires dans Compose, sur un réseau dédié monitoring (interne, sauf Grafana) :
+
+**Telegraf** : collecte les métriques des conteneurs via l’API Docker et les envoie à InfluxDB ;
+**InfluxDB** : stocke les métriques dans un volume nommé (influx_data), sans port publié ;
+**Grafana** : affiche les tableaux de bord, avec un volume grafana_data, publié seulement sur 127.0.0.1:3000, et un mot de passe admin passé en secret.
+
+**Risque du socket Docker** : Telegraf a besoin de /var/run/docker.sock pour lire les statistiques. Or un accès à ce socket permet de piloter tout le démon Docker : créer un conteneur privilégié, monter / de l’hôte, donc devenir root sur l’hôte. Même monté en :ro, l’API reste utilisable. Pour limiter ce risque :
+- passer par un proxy de socket (ex. docker-socket-proxy), qui n’autorise que la lecture des conteneurs et des statistiques 
+- ou collecter via cAdvisor et les cgroups 
+- ne pas exposer Telegraf ni InfluxDB sur le réseau, et ne pas les mettre sur backend.
