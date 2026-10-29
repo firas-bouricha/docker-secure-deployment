@@ -279,3 +279,13 @@ versionnement sémantique MAJEUR.MINEUR.CORRECTIF (1.2.3), un numéro par build,
 ne jamais déployer latest en production ;
 lier chaque image au commit Git (tag 1.2.3-abc1234 ou label) ;
 déployer par digest pour garantir l’image exacte.
+
+## Question 8.23 — Distribution
+1- Quelle différence existe-t-il entre publier une image dans un registre, transférer une archive d'image et copier un conteneur existant ?
+2- Quels avantages un registre présente-t-il pour une infrastructure comportant plusieurs hôtes ?
+reponse:
+1- Registre (docker push/pull) : l’image est publiée sur un serveur central. Chaque hôte la télécharge par nom et tag ou digest, et seules les couches manquantes sont transférées.
+Archive (save/load) : l’image complète tient dans un fichier .tar, copié à la main (clé USB, scp). C’est utile hors ligne, mais il n’y a ni versionnement ni partage des couches.
+Copier un conteneur (docker commit ou export) : on capture un conteneur avec ses modifications manuelles. Ce n’est pas reproductible (aucun Dockerfile), on peut y embarquer des données ou des secrets, et export perd l’historique et la configuration.
+2-Avantages d’un registre avec plusieurs hôtes : une source unique pour tous les serveurs, le téléchargement à la demande (pull), le versionnement par tags et digests, le transfert des seules couches manquantes, la gestion des droits d’accès, le scan de vulnérabilités et l’intégration CI/CD et orchestrateur (Kubernetes).
+
