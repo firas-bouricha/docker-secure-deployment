@@ -28,8 +28,10 @@ Séparer limite le contexte de construction au seul dossier app/, ce qui évite 
 - la configuration d’exécution (variables d’environnement, ports, réseaux dans compose.yaml).
 ________________________________________
 
-![alt text](./docs/captures/01-build.png)
-## Question 8.3 
+## Question 8.2 — Dockerfile
+
+![Construction de l'image](./docs/captures/01-build.png)
+
 - FROM php:8.4-apache : définit l’image de base (PHP 8.4 avec Apache, image officielle). Ses couches constituent la base sur laquelle les instructions suivantes ajoutent les leurs.
 - WORKDIR /var/www/html : définit le répertoire de travail pour les instructions suivantes du Dockerfile et pour le conteneur au démarrage. Le dossier est créé s’il n’existe pas.
 - COPY public/ /var/www/html/ : copie, au moment du build, le contenu de public/ (pris dans le contexte de construction) dans l’image, à l’emplacement servi par Apache. Cette instruction crée une nouvelle couche.
@@ -37,6 +39,20 @@ ________________________________________
 - ./app : c’est le contexte de construction, le répertoire envoyé au moteur Docker. Docker y cherche le Dockerfile par défaut, et les sources de COPY sont relatives à ce dossier. Les fichiers situés en dehors (comme secrets/) ne sont pas accessibles au build.
 
 - Image ≠ conteneur : une image est un modèle immuable en lecture seule (couches de fichiers et configuration). Un conteneur est une instance en cours d’exécution de cette image, avec ses processus, son réseau et sa couche inscriptible. Plusieurs conteneurs peuvent être créés depuis la même image. Les modifications faites dans un conteneur ne changent pas l’image et disparaissent à sa suppression.
+________________________________________
+## Question 8.3 — Structure d'une image
+
+1- Identifiez les différentes étapes visibles dans l'historique.
+2- Toutes les instructions Dockerfile produisent-elles nécessairement une couche contenant des modifications de fichiers ?
+3- Quelle différence existe-t-il entre les couches de fichiers et la configuration d'une image ?
+
+1- `docker image history ynov/td2-web:1.0` affiche les étapes de la plus récente à la plus ancienne :
+- en haut, mes 3 instructions : `COPY public/ /var/www/html/`, `WORKDIR /var/www/html` et `RUN docker-php-ext-install pdo_mysql` ;
+- en dessous, toutes les étapes héritées de l'image de base `php:8.4-apache` (installation de Debian, d'Apache, de PHP, puis `ENV`, `EXPOSE 80`, `CMD ["apache2-foreground"]`…).
+
+2- Non. Seules les instructions qui modifient des fichiers (`RUN`, `COPY`, `ADD`) créent une couche avec un contenu (taille supérieure à 0 B dans l'historique). Les instructions comme `ENV`, `EXPOSE`, `CMD` ou `WORKDIR` (le dossier existe déjà dans l'image de base) ne modifient que la configuration et apparaissent avec une taille de 0 B.
+
+3- Les couches de fichiers contiennent le système de fichiers de l'image (programmes, bibliothèques, code PHP) : elles sont empilées et en lecture seule. La configuration est un ensemble de métadonnées (commande de démarrage, variables d'environnement, ports exposés, répertoire de travail, architecture `linux/amd64`) qui indique comment lancer le conteneur, sans contenir de fichiers.
 ________________________________________
 ## Question 8.4 
 
@@ -73,13 +89,7 @@ ________________________________________
 2- La différence entre une variable d'environnement, un fichier .env et un secret monté dans /run/secrets/ réside principalement dans la manière dont ils sont gérés et sécurisés :
 - Une variable d'environnement est définie dans le conteneur et peut être visible par tous les processus du conteneur. Elle peut être définie dans le Dockerfile, dans le fichier docker-compose.yml ou via la ligne de commande lors du démarrage du conteneur. Cependant, elle n'est pas sécurisée et peut être exposée si le conteneur est compromis.
 - Un fichier .env est un fichier texte qui contient des paires clé-valeur pour les variables d'environnement. Il est généralement utilisé pour stocker des configurations et peut être lu par Docker Compose pour définir les variables d'environnement. Cependant, si ce fichier est versionné ou partagé, il peut également exposer des informations sensibles.
-- Un secret monté dans /run/secrets/ est une méthode plus sécurisée pour gérer les informations sensibles. Les secrets sont stockés de manière sécurisée par Docker et ne sont accessibles qu'aux conteneurs qui en ont besoin. Ils ne sont pas stockés dans l'image et ne sont pas exposés dans les variables d'environnement, ce qui réduit le risque d'exposition des informations sensibles.    
-Question 8.7 — Diagnostic et reconstruction
-Quel message permettait d'identifier l'origine de la panne ?
-Pourquoi fallait-il modifier l'image plutôt que simplement redémarrer le conteneur ?
-Quelle différence existe-t-il entre docker compose restart et docker compose up --build -d ?
-
-
+- Un secret monté dans /run/secrets/ est une méthode plus sûre pour gérer les informations sensibles. Le secret est fourni au conteneur sous forme de fichier, et seulement aux conteneurs qui en ont besoin. Il n'est pas stocké dans l'image et n'apparaît pas dans les variables d'environnement ni dans `docker inspect`. Attention : avec Docker Compose, ce fichier reste en clair sur l'hôte (pas de chiffrement), voir Q8.20.
 ________________________________________
 ## Question 8.7 — Diagnostic et reconstruction
 
@@ -223,7 +233,7 @@ ________________________________________
 1- Pourquoi cap_drop: ALL ne constitue-t-il pas toujours une solution directement applicable ?
 2- En quoi le choix de l'image de base influence-t-il la capacité à exécuter le service sans privilèges ?
 
-1-cap_drop: ALL n’est pas toujours applicable directement : certains services ont besoin de quelques droits pour démarrer. Apache démarre en root, ouvre le port 80 puis change d’utilisateur : sans SETUID/SETGID, il plante (erreur observée : ...). Il faut donc tout retirer, tester, puis rajouter uniquement ce qui est nécessaire.
+1-cap_drop: ALL n’est pas toujours applicable directement : certains services ont besoin de quelques droits pour démarrer. Apache démarre en root, ouvre le port 80 puis change d’utilisateur : sans SETUID/SETGID, il ne peut pas passer ses processus sur l’utilisateur www-data et s’arrête (erreur du type « setgid: unable to set group id… Operation not permitted »). Il faut donc tout retirer, tester, puis rajouter uniquement ce qui est nécessaire.
 
 2-Influence de l’image de base : une image prévue pour tourner sans root (utilisateur non privilégié, port > 1024 comme 8080) n’a besoin d’aucune capability. php:8.4-apache démarre en root sur le port 80, ce qui oblige à garder 3 capabilities. Le choix de l’image détermine donc le niveau de privilèges minimal possible.
 
@@ -235,7 +245,7 @@ ________________________________________
 
 1- Un tag ne garantit pas l'identité immuable d'une image car il peut être réutilisé pour pointer vers une nouvelle version de l'image. Par exemple, le tag "latest" peut être mis à jour pour référencer une nouvelle image, ce qui signifie que deux images avec le même tag peuvent avoir des contenus différents à différents moments. Ainsi, se fier uniquement aux tags peut entraîner des incohérences et des problèmes de compatibilité.
 2- Pour utiliser un digest pour identifier une version précise, on peut se référer à le digest SHA256 de l'image. Le digest est un identifiant unique basé sur le contenu de l'image, et il ne change pas tant que le contenu de l'image reste le même. En utilisant le digest, on peut s'assurer que l'on utilise exactement la même image, indépendamment des tags qui peuvent être réutilisés ou modifiés. Par exemple, on peut spécifier l'image avec son digest dans le Dockerfile ou dans le fichier docker-compose.yml pour garantir l'utilisation d'une version spécifique et immuable de l'image.
-3- Les architectures AMD64 et ARM64 compliquent la comparaison des images car elles peuvent avoir des différences dans leur contenu binaire en raison des différences d architecture. Une image construite pour une architecture spécifique peut ne pas être compatible avec une autre architecture, ce qui signifie que deux images avec le même tag ou même digest peuvent ne pas être identiques si elles sont destinées à des architectures différentes. Cela peut entraîner des problèmes de compatibilité et de déploiement si l'on ne tient pas compte de l'architecture lors de la comparaison ou de l'utilisation des images. Pour résoudre ce problème, il est important de vérifier l'architecture de l'image et de s'assurer que l'on utilise la bonne version pour l'environnement cible.
+3- Une image officielle comme mariadb:11.4 est multi-architecture : le même tag pointe vers un index qui contient une variante par architecture (AMD64, ARM64…). Chaque variante a son propre contenu binaire, donc son propre digest et son propre identifiant local. Deux postes qui téléchargent le « même » tag (un PC Intel en AMD64 et un Mac Apple Silicon en ARM64) obtiennent ainsi des images différentes, avec des ID différents. Pour comparer correctement, il faut soit comparer le digest de l'index (`docker buildx imagetools inspect mariadb:11.4`), soit préciser l'architecture. Un digest identique, en revanche, désigne toujours exactement le même contenu.
 ________________________________________
 ## Question 8.20 — Protection des informations sensibles
 1- Quel intérêt présente le montage d'un secret sous forme de fichier ?
@@ -251,11 +261,6 @@ Pas un coffre-fort : avec Compose, le secret n’est qu’un fichier en clair su
 En production : Docker Swarm secrets ou Kubernetes Secrets (chiffrés au repos), ou mieux un coffre centralisé : HashiCorp Vault, AWS Secrets Manager, Azure Key Vault. Ils offrent chiffrement, droits d’accès, rotation et audit.
 
 ## Question 8.21 — Cache Docker
-1- Pourquoi l'installation de l'extension PHP peut-elle être récupérée depuis le cache alors que la copie du code doit être réexécutée ?
-2- Dans quel cas serait-il pertinent d'utiliser --no-cache ?
-3- Pourquoi l'ordre des instructions influence-t-il les performances de construction ?
-
-reponses :
 1- Pourquoi l'installation de l'extension PHP peut-elle être récupérée depuis le cache alors que la copie du code doit être réexécutée ?
 2- Dans quel cas serait-il pertinent d'utiliser --no-cache ?
 3- Pourquoi l'ordre des instructions influence-t-il les performances de construction ?
@@ -314,9 +319,7 @@ Architecture : 3 services supplémentaires dans Compose, sur un réseau dédié 
 - ou collecter via cAdvisor et les cgroups 
 - ne pas exposer Telegraf ni InfluxDB sur le réseau, et ne pas les mettre sur backend.
 
-### 18.2 — Supervision Telegraf / InfluxDB / Grafana
-
-mon solution Supervision :
+### Mise en œuvre et résultats
 
 ![Supervision état normal](docs/captures/supervision-normal.png)
 
