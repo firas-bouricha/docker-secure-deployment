@@ -90,7 +90,7 @@ services:
       - monitoring
 
   telegraf:
-    image: telegraf:1.32
+    image: telegraf:1.40.2
     profiles: [ "monitoring" ]
     user: telegraf
     entrypoint: [ "/bin/sh", "-c" ]

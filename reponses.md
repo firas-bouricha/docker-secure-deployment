@@ -310,3 +310,20 @@ Architecture : 3 services supplémentaires dans Compose, sur un réseau dédié 
 - passer par un proxy de socket (ex. docker-socket-proxy), qui n’autorise que la lecture des conteneurs et des statistiques 
 - ou collecter via cAdvisor et les cgroups 
 - ne pas exposer Telegraf ni InfluxDB sur le réseau, et ne pas les mettre sur backend.
+
+### 18.2 — Supervision Telegraf / InfluxDB / Grafana
+
+mon solution Supervision :
+
+![Supervision état normal](docs/captures/supervision-normal.png)
+
+**Lecture du dashboard :**
+| Panneau | Rôle | Type de donnée |
+|---|---|---|
+| Conteneurs actifs | Conteneurs ayant envoyé une mesure dans les 30 dernières secondes | Système |
+| Mémoire / CPU / Réseau | Consommation par conteneur | Système |
+| Healthcheck MariaDB | Résultat du healthcheck Compose (§14.2) | Disponibilité |
+| Disponibilité du service web | Code HTTP renvoyé par `http://web/` (sonde Telegraf) | Applicative |
+| Journaux web / db | Logs Apache et MariaDB collectés par `inputs.docker_log` | Journaux |
+
+Telegraf collecte les métriques des conteneurs (CPU, mémoire, réseau), le code HTTP du service web et les journaux, InfluxDB les stocke et Grafana les affiche. Ces services tournent sur un réseau `monitoring` interne, et seul Grafana est publié, sur `127.0.0.1:3000`. Telegraf passe par un `docker-socket-proxy` en lecture seule, car un accès direct à `/var/run/docker.sock` donnerait le contrôle total de l'hôte. Lors du test `docker compose stop db`, `web` restait actif alors que la disponibilité passait à « Panne » : un conteneur qui tourne ne prouve pas que le service fonctionne. Les journaux confirment la sonde Telegraf (`GET / 200`) toutes les 10 secondes.
