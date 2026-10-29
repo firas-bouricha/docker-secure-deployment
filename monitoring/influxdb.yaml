@@ -1,10 +1,11 @@
 apiVersion: 1
 datasources:
-  - name: InfluxDB
+  - name: InfluxDB TD2
+    uid: influxdb-td2
     type: influxdb
     access: proxy
     url: http://influxdb:8086
-    isDefault: true
+    isDefault: false
     jsonData:
       version: Flux
       organization: ynov

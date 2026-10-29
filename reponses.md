@@ -1,7 +1,8 @@
 
-Fichier: reponses.md
-reponses aux questions du TD2 Docker
-les reponses sont trouvées en  basant sur  les documents fournis et le recherche sur internet et les connaissances personnelles de l'auteur aussi avec l'aide des LLM 
+# reponses aux questions du TD2_2.docx
+## Firas Bouricha 
+** les reponses sont trouvées en  basant sur  les documents fournis et le recherche sur internet et mes connaissances personnelles avec l'aide des LLM **
+https://github.com/firas-bouricha/docker-secure-deployment
 
 ________________________________________
 ## Question 8.1 
@@ -26,6 +27,8 @@ Séparer limite le contexte de construction au seul dossier app/, ce qui évite 
 - le script SQL (monté dans le conteneur db) 
 - la configuration d’exécution (variables d’environnement, ports, réseaux dans compose.yaml).
 ________________________________________
+
+![alt text](./docs/captures/01-build.png)
 ## Question 8.3 
 - FROM php:8.4-apache : définit l’image de base (PHP 8.4 avec Apache, image officielle). Ses couches constituent la base sur laquelle les instructions suivantes ajoutent les leurs.
 - WORKDIR /var/www/html : définit le répertoire de travail pour les instructions suivantes du Dockerfile et pour le conteneur au démarrage. Le dossier est créé s’il n’existe pas.
@@ -327,3 +330,30 @@ mon solution Supervision :
 | Journaux web / db | Logs Apache et MariaDB collectés par `inputs.docker_log` | Journaux |
 
 Telegraf collecte les métriques des conteneurs (CPU, mémoire, réseau), le code HTTP du service web et les journaux, InfluxDB les stocke et Grafana les affiche. Ces services tournent sur un réseau `monitoring` interne, et seul Grafana est publié, sur `127.0.0.1:3000`. Telegraf passe par un `docker-socket-proxy` en lecture seule, car un accès direct à `/var/run/docker.sock` donnerait le contrôle total de l'hôte. Lors du test `docker compose stop db`, `web` restait actif alors que la disponibilité passait à « Panne » : un conteneur qui tourne ne prouve pas que le service fonctionne. Les journaux confirment la sonde Telegraf (`GET / 200`) toutes les 10 secondes.
+
+# Questions de synthèse 
+## Q8.25 : Compose ou docker run
+
+Compose décrit toute l’infrastructure (services, réseaux, volumes, secrets, dépendances) dans un seul fichier versionné, et la démarre avec une seule commande (docker compose up -d). Avec docker run, il faudrait retaper de longues commandes dans le bon ordre, ce qui est source d’erreurs et pas reproductible. Compose gère aussi automatiquement le réseau, le DNS entre services (db), l’ordre de démarrage (service_healthy) et la reconstruction (--build).
+
+## Q8.26 : 2 conteneurs, ni haute disponibilité ni reprise
+
+Les 2 conteneurs ont des rôles différents : web et db ne sont pas des copies l’un de l’autre. Si db tombe, rien ne le remplace, et l’application est en panne (test de la section 14.3). Ils tournent sur un seul hôte : si la machine s’arrête, tout s’arrête. Sans politique restart ni orchestrateur, aucun conteneur n’est relancé automatiquement.
+
+## Q8.27 : LXC/LXD ou Docker
+
+LXC/LXD fait des conteneurs système : un mini OS complet avec systemd, plusieurs services, SSH et apt, qu’on administre comme une petite VM, avec des données conservées dans le conteneur. Docker fait des conteneurs applicatifs : un seul processus par conteneur, une image construite par Dockerfile, et un conteneur jetable, recréé plutôt que réparé, avec les données dans des volumes. Les deux partagent le noyau de l’hôte et utilisent les mêmes mécanismes : namespaces et cgroups.
+
+## Q8.28 : plusieurs machines, tolérance aux pannes, mise à jour sans coupure
+
+Limites actuelles : tout tourne sur un seul hôte (point unique de défaillance), avec une seule instance de chaque service. Le volume db_data est local à la machine. Une mise à jour recrée le conteneur et provoque une coupure, et rien ne relance automatiquement un service tombé.
+Ce qu’un orchestrateur (Kubernetes, Docker Swarm) doit fournir :
+
+un cluster de plusieurs nœuds, avec placement et redéplacement automatique des conteneurs ;
+des réplicas et un répartiteur de charge ;
+le redémarrage automatique (auto-réparation) grâce aux sondes de santé ;
+les mises à jour progressives (rolling update) avec retour arrière ;
+un stockage partagé ou répliqué ;
+une gestion centralisée des secrets ;
+la mise à l’échelle automatique (autoscaling).
+Créer le zip
