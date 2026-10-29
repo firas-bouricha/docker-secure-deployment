@@ -349,11 +349,10 @@ LXC/LXD fait des conteneurs système : un mini OS complet avec systemd, plusieur
 Limites actuelles : tout tourne sur un seul hôte (point unique de défaillance), avec une seule instance de chaque service. Le volume db_data est local à la machine. Une mise à jour recrée le conteneur et provoque une coupure, et rien ne relance automatiquement un service tombé.
 Ce qu’un orchestrateur (Kubernetes, Docker Swarm) doit fournir :
 
-un cluster de plusieurs nœuds, avec placement et redéplacement automatique des conteneurs ;
-des réplicas et un répartiteur de charge ;
-le redémarrage automatique (auto-réparation) grâce aux sondes de santé ;
-les mises à jour progressives (rolling update) avec retour arrière ;
-un stockage partagé ou répliqué ;
-une gestion centralisée des secrets ;
-la mise à l’échelle automatique (autoscaling).
-Créer le zip
+- un cluster de plusieurs nœuds, avec placement et redéplacement automatique des conteneurs 
+- des réplicas et un répartiteur de charge 
+- le redémarrage automatique (auto-réparation) grâce aux sondes de santé 
+- les mises à jour progressives (rolling update) avec retour arrière 
+- un stockage partagé ou répliqué 
+- une gestion centralisée des secrets 
+- la mise à l’échelle automatique (autoscaling).
