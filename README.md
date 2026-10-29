@@ -101,15 +101,3 @@ monitoring/     telegraf.conf, provisioning et dashboard Grafana
 compose.yaml    Services, réseaux, volumes, secrets
 reponses.md     Justifications techniques (Q8.1 à Q8.28)
 ```
-
-## Compétences mises en œuvre
-
-- Orchestration de conteneurs avec Docker Compose
-- Segmentation réseau (réseaux `bridge`, réseau `internal`)
-- Gestion des secrets sans les exposer dans le code ou les variables d'environnement
-- Principe du moindre privilège sur les services
-- Initialisation automatique d'une base de données au premier démarrage
-
-## Auteur
-Firas Bouricha, étudiant en Mastère 1 Cloud, Security & Infrastructure (Ynov Sophia).
-[lien vers le dépôt GitHub](https://github.com/firas-bouricha/docker-secure-deployment)
