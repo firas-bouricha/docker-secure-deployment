@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🐳 TD2 Docker — Mini-projet conteneurisation & orchestration
+# 🐳 TD2 Docker - Mini-projet conteneurisation & orchestration
 
 **Un petit projet pour comprendre Docker et l'orchestration multi-conteneurs avec Docker Compose :**
 une application PHP connectée à MariaDB, cloisonnée, sécurisée et supervisée.
