@@ -58,19 +58,94 @@ services:
     depends_on:
       db:
         condition: service_healthy
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    profiles: [ "monitoring" ]
+    environment:
+      CONTAINERS: 1 # lecture de la liste et des stats des conteneurs
+      INFO: 1
+      POST: 0 # aucune écriture : impossible de créer/supprimer des conteneurs
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - monitoring
+
+  influxdb:
+    image: influxdb:2.7
+    profiles: [ "monitoring" ]
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD_FILE: /run/secrets/influx_admin_password
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN_FILE: /run/secrets/influx_token
+      DOCKER_INFLUXDB_INIT_ORG: ynov
+      DOCKER_INFLUXDB_INIT_BUCKET: td2
+      DOCKER_INFLUXDB_INIT_RETENTION: 7d
+    secrets:
+      - influx_admin_password
+      - influx_token
+    volumes:
+      - influx_data:/var/lib/influxdb2
+    networks:
+      - monitoring
+
+  telegraf:
+    image: telegraf:1.32
+    profiles: [ "monitoring" ]
+    user: telegraf
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: [ 'INFLUX_TOKEN="$$(cat /run/secrets/influx_token)" exec telegraf --config /etc/telegraf/telegraf.conf' ]
+    secrets:
+      - influx_token
+    volumes:
+      - ./monitoring/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    networks:
+      - monitoring
+      - frontend
+    depends_on:
+      - influxdb
+      - socket-proxy
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    profiles: [ "monitoring" ]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+    secrets:
+      - grafana_admin_password
+      - influx_token
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - monitoring
+      - frontend
+    depends_on:
+      - influxdb
 
 volumes:
   db_data:
+  influx_data:
+  grafana_data:
 
 networks:
   frontend:
-
   backend:
+    internal: true
+  monitoring:
     internal: true
 
 secrets:
   db_root_password:
     file: ./secrets/db_root_password
-
   db_app_password:
     file: ./secrets/db_app_password
+  influx_admin_password:
+    file: ./secrets/influx_admin_password
+  influx_token:
+    file: ./secrets/influx_token
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password
